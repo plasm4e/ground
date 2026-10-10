@@ -6,6 +6,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Card, Field, Row, Screen, SectionTitle } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
+import { ocrAvailable } from '@/lib/ocr';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { pageAdded, pageRemoved, textChanged, type CapturedPage } from '@/store/capture-slice';
 import { extractCapture } from '@/store/thunks';
@@ -25,7 +26,7 @@ const toPage = (a: ImagePicker.ImagePickerAsset): CapturedPage => ({
 
 export default function CaptureScreen() {
   const dispatch = useAppDispatch();
-  const { pages, text, status } = useAppSelector((s) => s.capture);
+  const { pages, text, status, ocrProgress } = useAppSelector((s) => s.capture);
   const { serverUrl, useAi } = useAppSelector((s) => s.settings);
   const aiOn = useAi && serverUrl.trim() !== '';
 
@@ -86,15 +87,24 @@ export default function CaptureScreen() {
         <ThemedText type="small" themeColor="textSecondary">
           {aiOn
             ? 'Photos are sent to your Ground server, where AI reads them and pulls out places, hours, phone numbers, people and dates. You review everything before it is saved.'
-            : 'Offline mode: Ground extracts phone numbers, addresses, hours and dates from the text you type. Set up a server in Settings to read photos automatically.'}
+            : ocrAvailable
+              ? 'Free mode: the text in your photos is read on this phone (nothing is uploaded), then Ground picks out phone numbers, addresses, hours and dates. Flat, well-lit photos work best. You review everything before it is saved.'
+              : 'Offline mode: Ground extracts phone numbers, addresses, hours and dates from the text you type. Set up a server in Settings to read photos automatically.'}
         </ThemedText>
       </Card>
 
       <View style={{ gap: Spacing.two }}>
-        <Button title={aiOn ? '✨ Read this paper' : 'Continue'} onPress={read} loading={status === 'extracting'} disabled={nothing} />
+        <Button
+          title={aiOn || (ocrAvailable && pages.length > 0) ? '✨ Read this paper' : 'Continue'}
+          onPress={read}
+          loading={status === 'extracting'}
+          disabled={nothing}
+        />
         {status === 'extracting' && (
           <ThemedText type="small" themeColor="textSecondary" style={{ textAlign: 'center' }}>
-            Reading… this can take up to a minute for long papers.
+            {ocrProgress !== null
+              ? `Reading text from the photo… ${Math.round(ocrProgress * 100)}%`
+              : 'Reading… the first time can take up to a minute.'}
           </ThemedText>
         )}
       </View>

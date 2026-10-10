@@ -12,8 +12,9 @@
     "server": "npm run dev -w @ground/server",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "build:web": "npm run export:web -w @ground/mobile",
-    "start": "npm run start -w @ground/server"
+    "build:web": "EXPO_PUBLIC_SAME_ORIGIN=1 npm run export:web -w @ground/mobile",
+    "start": "npm run start -w @ground/server",
+    "build:web:static": "npm run export:web -w @ground/mobile"
   },
   "engines": {
     "node": ">=22.13"

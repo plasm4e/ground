@@ -13,6 +13,8 @@ export interface CaptureState {
   pages: CapturedPage[];
   text: string;
   status: 'idle' | 'extracting' | 'ready';
+  /** 0..1 while on-device text recognition runs, otherwise null. */
+  ocrProgress: number | null;
   /** Shown on the review screen, e.g. why the AI path was skipped. */
   notice: string | null;
   draft: Extraction | null;
@@ -23,6 +25,7 @@ const initialState: CaptureState = {
   pages: [],
   text: '',
   status: 'idle',
+  ocrProgress: null,
   notice: null,
   draft: null,
   draftSource: 'manual',
@@ -43,10 +46,15 @@ const captureSlice = createSlice({
     },
     extractionStarted(state) {
       state.status = 'extracting';
+      state.ocrProgress = null;
       state.notice = null;
+    },
+    ocrProgressed(state, action: PayloadAction<number>) {
+      state.ocrProgress = action.payload;
     },
     draftReady(state, action: PayloadAction<{ draft: Extraction; source: ExtractionSource; notice?: string | null }>) {
       state.status = 'ready';
+      state.ocrProgress = null;
       const d = action.payload.draft;
       // Temporary ids keep editor list keys stable; they are replaced when the document is saved.
       const keyed = <T extends object>(items: T[]) => items.map((i) => Object.assign({}, i, { id: newId() }));
@@ -63,6 +71,6 @@ const captureSlice = createSlice({
   },
 });
 
-export const { pageAdded, pageRemoved, textChanged, extractionStarted, draftReady, draftEdited, captureReset } =
+export const { pageAdded, pageRemoved, textChanged, extractionStarted, ocrProgressed, draftReady, draftEdited, captureReset } =
   captureSlice.actions;
 export default captureSlice.reducer;

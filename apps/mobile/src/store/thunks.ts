@@ -4,7 +4,8 @@ import { Directory, File, Paths } from 'expo-file-system';
 import { Platform } from 'react-native';
 
 import { api, ApiError } from '@/api/client';
-import { draftReady, extractionStarted, captureReset } from './capture-slice';
+import { ocrAvailable, recognizeText } from '@/lib/ocr';
+import { captureReset, draftReady, extractionStarted, ocrProgressed } from './capture-slice';
 import { documentDeleted, documentSaved, remoteDocumentsApplied } from './documents-slice';
 import { syncCompleted } from './settings-slice';
 import { topicSelectors, todayIso } from './selectors';
@@ -14,23 +15,26 @@ import type { AppDispatch, RootState } from './index';
 const createAppThunk = createAsyncThunk.withTypes<{ state: RootState; dispatch: AppDispatch }>();
 
 /**
- * Turns the captured photos/text into a draft for review.
- * Uses the server's AI extraction when available, otherwise the on-device rule-based parser.
+ * Turns the captured photos/text into a draft for review, using the best reader available:
+ * 1. AI extraction on the Ground server (when configured),
+ * 2. otherwise free on-device text recognition of the photos (web), followed by
+ * 3. the rule-based parser, which also handles typed text.
  */
 export const extractCapture = createAppThunk('capture/extract', async (_, { getState, dispatch }) => {
   dispatch(extractionStarted());
   const { capture, settings } = getState();
   const topics = topicSelectors.selectAll(getState());
-  const offline = () => parseOffline(capture.text, { topics, dateOrder: settings.dateOrder });
+  const typed = capture.text.trim();
 
   const images = capture.pages.filter((p) => p.base64).map((p) => ({ data: p.base64!, mediaType: p.mediaType }));
-  const canUseAi = settings.useAi && settings.serverUrl.trim() !== '' && (images.length > 0 || capture.text.trim() !== '');
+  const canUseAi = settings.useAi && settings.serverUrl.trim() !== '' && (images.length > 0 || typed !== '');
 
+  let aiProblem: string | null = null;
   if (canUseAi) {
     try {
       const draft = await api.extract(settings, {
         images,
-        text: capture.text || undefined,
+        text: typed || undefined,
         topics: topics.map(({ id, name, keywords }) => ({ id, name, keywords })),
         today: todayIso(),
         locale: settings.locale,
@@ -38,37 +42,44 @@ export const extractCapture = createAppThunk('capture/extract', async (_, { getS
       dispatch(draftReady({ draft, source: 'ai' }));
       return;
     } catch (e) {
-      const reason =
+      aiProblem =
         e instanceof ApiError && e.status === 503
           ? 'the server has no AI key configured'
           : e instanceof ApiError
             ? e.message
             : 'unexpected error';
-      const draft = capture.text.trim() ? offline() : emptyExtraction();
-      dispatch(
-        draftReady({
-          draft,
-          source: capture.text.trim() ? 'offline' : 'manual',
-          notice: `AI reading unavailable (${reason}) — ${capture.text.trim() ? 'used the offline parser instead' : 'fill in the details by hand'}.`,
-        }),
-      );
-      return;
     }
   }
 
-  if (capture.text.trim()) {
-    dispatch(draftReady({ draft: offline(), source: 'offline' }));
-  } else {
-    dispatch(
-      draftReady({
-        draft: emptyExtraction(),
-        source: 'manual',
-        notice: images.length
-          ? 'No server configured for AI reading. Type the important details, or add the text on the capture screen to use the offline parser.'
-          : null,
-      }),
-    );
+  let recognized = '';
+  let ocrProblem: string | null = null;
+  if (capture.pages.length && ocrAvailable) {
+    try {
+      recognized = await recognizeText(
+        capture.pages.map((p) => p.uri),
+        settings.locale,
+        (fraction) => dispatch(ocrProgressed(fraction)),
+      );
+    } catch (e) {
+      ocrProblem = e instanceof Error ? e.message : 'unknown error';
+    }
   }
+
+  const text = [typed, recognized].filter(Boolean).join('\n\n');
+  const notes = [
+    aiProblem && `AI reading unavailable (${aiProblem}).`,
+    recognized && 'Text was read from the photo on this phone: check names, numbers and dates carefully.',
+    ocrProblem && `Could not read the photo (${ocrProblem}).`,
+    !text && capture.pages.length > 0 && 'No text found: fill in the important details by hand.',
+  ].filter(Boolean);
+
+  dispatch(
+    draftReady({
+      draft: text ? parseOffline(text, { topics, dateOrder: settings.dateOrder }) : emptyExtraction(),
+      source: text ? 'offline' : 'manual',
+      notice: notes.length ? notes.join(' ') : null,
+    }),
+  );
 });
 
 /**

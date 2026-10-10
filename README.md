@@ -41,7 +41,7 @@ packages/core   Shared domain model (zod schemas), default topics, offline parse
 
 - **Screens** (`src/app`, Expo Router): Home (search, upcoming appointments, topics, recent papers), Places (filter by topic, "open now"), Agenda (upcoming/past), People, plus Capture, Review, Paper detail/edit, Topic, Topics editor and Settings.
 - **State** (`src/store`): Redux Toolkit slices for `documents`, `topics`, `settings` (persisted) and `capture` (the in-progress photo + draft, not persisted). Places, people and appointments are not stored separately: memoized selectors flatten them out of the documents, so a paper is the single source of truth and every item links back to the paper it came from.
-- **Works offline.** Without a server, Ground uses the rule-based parser in `packages/core` on text you type or paste. It finds phone numbers, emails, websites, dates (several formats and languages), times, opening hours and street addresses, and assigns topics by keyword. Photos are still attached to the paper.
+- **Works offline and for free.** Without a server, the web version reads the text in photos on the phone (tesseract.js, `src/lib/ocr.web.ts`). Then the rule-based parser in `packages/core` finds phone numbers, emails, websites, dates (several formats and languages), times, opening hours and street addresses, and assigns topics by keyword. It also works on text you type or paste.
 - **Sync**: every change marks the document "dirty". `syncNow` pushes dirty documents and pending deletes, then pulls everything that changed on the server since its last cursor. It runs after saves and edits, on app start, and when the app comes back to the foreground. Photos stay on the device that took them.
 
 ### Server (`apps/server`)
@@ -75,20 +75,27 @@ npm run mobile                                 # scan the QR code with Expo Go
 
 In the app, open **Settings** and enter the server address as your phone sees it (e.g. `http://192.168.1.20:4000`, not `localhost`) and the token. **Save & connect** checks the connection and runs the first sync.
 
-### Deploy on Render (works from a phone)
+### Deploy on Render for free (works from a phone)
 
-Render runs the server **and** a web version of the app at one address, so you can use Ground from your phone's browser without a computer or an app store.
+`render.yaml` deploys Ground as a free **Render Static Site**: you use it from your phone's browser, with no computer, app store or paid service.
 
-1. **Anthropic API key:** sign in at [console.anthropic.com](https://console.anthropic.com), add credits under *Billing* (prepaid), then *API keys → Create key*. Copy it right away, because it's only shown once.
-2. **Render:** *New → Blueprint*, connect GitHub, and pick this repository (Render needs access to it if it's private). Render reads `render.yaml`, asks you for `ANTHROPIC_API_KEY` (paste the key), and generates `GROUND_API_TOKEN` for you.
-3. When the deploy finishes, open the service URL (`https://ground-xxxx.onrender.com`) on your phone.
-4. In Ground, open **Settings**. The server address is already filled in. Paste the `GROUND_API_TOKEN` value from Render's *Environment* tab and tap **Save & connect**.
-5. Optional: use your browser's *Add to Home Screen* to get an app icon.
+1. Render dashboard → *New → Blueprint*, connect GitHub, and pick this repository (Render needs access to it if it's private).
+2. When the deploy finishes, open the site (`https://ground-xxxx.onrender.com`) on your phone.
+3. Optional: use your browser's *Add to Home Screen* to get an app icon.
 
-Notes:
-- The blueprint uses the paid **Starter** plan with a 1 GB disk, because the free plan erases the SQLite database on every restart.
-- In the browser version, photos are read and their details saved, but the photo itself isn't kept (browser storage is too small). The native app keeps photos.
-- Set `GROUND_MODEL=claude-sonnet-5-5` in Render to roughly halve the AI cost per paper.
+How the free version works:
+- **Photos are read on the phone** with [tesseract.js](https://github.com/naptha/tesseract.js) (free OCR, served by the site itself; about 7 MB is downloaded the first time). Then the offline parser picks out phones, addresses, hours, dates and people. It works best with flat, well-lit photos, and you always review the result.
+- **Papers are stored in the phone's browser.** Clearing the browser's site data deletes them, so use *Settings → Export everything* now and then. The photo itself isn't kept (browser storage is too small), only what was read from it.
+
+### Upgrade later: sync and AI reading (paid)
+
+`render.server.yaml` runs the Ground server, which serves the same web app and adds sync between devices and AI reading with Claude. It costs about $7/month on Render (Starter plan plus a 1 GB disk; the free plan erases the database on restart), plus Anthropic API usage of roughly $0.05–0.10 per paper.
+
+1. **Anthropic API key:** at [console.anthropic.com](https://console.anthropic.com), add prepaid credits under *Billing*, then *API keys → Create key*.
+2. **Render:** *New → Blueprint*, and set the Blueprint path to `render.server.yaml`. Paste the key when asked for `ANTHROPIC_API_KEY`. `GROUND_API_TOKEN` (a password protecting your server) is generated for you.
+3. Open the site. In **Settings**, the server address is already filled in: paste `GROUND_API_TOKEN` from Render's *Environment* tab and tap **Save & connect**.
+
+Set `GROUND_MODEL=claude-sonnet-5-5` to roughly halve the AI cost per paper.
 
 ### Checks
 
@@ -107,7 +114,7 @@ npm run lint -w @ground/mobile
 
 ## Roadmap ideas
 
-- On-device OCR (ML Kit / Apple Vision through a development build), so photos can be read offline
+- On-device OCR in the native app (ML Kit / Apple Vision through a development build); the web version already reads photos with tesseract.js
 - Downscale and deskew photos before upload, and attach several photos per paper
 - Add appointments to the phone calendar with reminders (`expo-calendar`)
 - Map view of places, and "nearest open place for X"

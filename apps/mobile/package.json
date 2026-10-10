@@ -7,6 +7,11 @@
     "@ground/core": "*",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@reduxjs/toolkit": "^2.13.0",
+    "@tesseract.js-data/eng": "^1.0.0",
+    "@tesseract.js-data/fra": "^1.0.0",
+    "@tesseract.js-data/ita": "^1.0.0",
+    "@tesseract.js-data/por": "^1.0.0",
+    "@tesseract.js-data/spa": "^1.0.0",
     "expo": "~57.0.27",
     "expo-constants": "~57.0.21",
     "expo-device": "~57.0.2",
@@ -32,7 +37,8 @@
     "react-native-web": "~0.21.0",
     "react-native-worklets": "0.10.1",
     "react-redux": "^9.3.0",
-    "redux-persist": "^6.0.0"
+    "redux-persist": "^6.0.0",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
@@ -49,7 +55,7 @@
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "export:web": "EXPO_PUBLIC_SAME_ORIGIN=1 expo export --platform web"
+    "export:web": "expo export --platform web --clear && node scripts/copy-ocr-assets.mjs"
   },
   "private": true
 }

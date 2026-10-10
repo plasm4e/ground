@@ -9,7 +9,7 @@ import { draftEdited } from '@/store/capture-slice';
 import { topicSelectors } from '@/store/selectors';
 import { saveCapturedDraft } from '@/store/thunks';
 
-const SOURCE_LABEL = { ai: '✨ Read by AI', offline: '🔎 Read on this phone', manual: '✍️ Entered by hand' };
+const SOURCE_LABEL = { ai: '✨ Read by AI', offline: '🔎 Read on this phone (free)', manual: '✍️ Entered by hand' };
 
 export default function ReviewScreen() {
   const dispatch = useAppDispatch();
