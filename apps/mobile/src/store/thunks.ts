@@ -71,9 +71,12 @@ export const extractCapture = createAppThunk('capture/extract', async (_, { getS
   }
 });
 
-/** Copies a photo out of the picker's cache (which the OS may clear) into app storage. */
-function keepPhoto(uri: string, docId: string): string {
-  if (Platform.OS === 'web') return uri;
+/**
+ * Copies a photo out of the picker's cache (which the OS may clear) into app storage.
+ * In a browser photos are not kept: they would quickly fill the ~5 MB storage quota.
+ */
+function keepPhoto(uri: string, docId: string): string | null {
+  if (Platform.OS === 'web') return null;
   try {
     const dir = new Directory(Paths.document, 'papers');
     dir.create({ idempotent: true, intermediates: true });

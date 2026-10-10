@@ -14,8 +14,15 @@ export interface SettingsState {
   lastSyncAt: string | null;
 }
 
+/**
+ * When the web app is served by the Ground server itself (see render.yaml), the server is
+ * at the same address as the page, so it can be filled in automatically.
+ */
+const sameOriginServer =
+  process.env.EXPO_PUBLIC_SAME_ORIGIN === '1' && typeof window !== 'undefined' ? window.location.origin : '';
+
 const initialState: SettingsState = {
-  serverUrl: '',
+  serverUrl: sameOriginServer,
   apiToken: '',
   useAi: true,
   dateOrder: 'MDY',

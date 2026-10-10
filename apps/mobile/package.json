@@ -48,7 +48,8 @@
     "web": "expo start --web",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "export:web": "EXPO_PUBLIC_SAME_ORIGIN=1 expo export --platform web"
   },
   "private": true
 }

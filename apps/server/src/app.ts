@@ -1,3 +1,4 @@
+import path from 'node:path';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import cors from 'cors';
 import { z } from 'zod';
@@ -11,6 +12,8 @@ export interface AppOptions {
   extractor: Extractor | null;
   /** When set, required as a Bearer token on every /api route except /api/health. */
   apiToken?: string;
+  /** Folder with the exported web app (`npm run build:web`). Served at `/` when present. */
+  webDir?: string;
 }
 
 const SyncRequestSchema = z.object({
@@ -42,7 +45,7 @@ const route =
   (fn: (req: Request, res: Response) => Promise<unknown> | unknown) => (req: Request, res: Response, next: NextFunction) =>
     Promise.resolve(fn(req, res)).catch(next);
 
-export function createApp({ store, extractor, apiToken }: AppOptions) {
+export function createApp({ store, extractor, apiToken, webDir }: AppOptions) {
   const app = express();
   app.use(cors());
   app.use(express.json({ limit: '40mb' }));
@@ -131,6 +134,19 @@ export function createApp({ store, extractor, apiToken }: AppOptions) {
       res.json(extraction);
     }),
   );
+
+  app.use('/api', (_req, res) => {
+    res.status(404).json({ error: 'Not found.' });
+  });
+
+  // --- Web app -------------------------------------------------------------
+
+  if (webDir) {
+    // The page and its scripts hold no secrets; data stays behind the /api token.
+    app.use(express.static(webDir));
+    // Client-side routes (/places, /document/123…) all load the same page.
+    app.get('/{*path}', (_req, res) => res.sendFile(path.join(webDir, 'index.html')));
+  }
 
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
     if (err instanceof z.ZodError) {

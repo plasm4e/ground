@@ -1,0 +1,30 @@
+# Render Blueprint: one web service that runs the API and serves the web app.
+# Deploy: Render dashboard → New → Blueprint → pick this repository.
+services:
+  - type: web
+    name: ground
+    runtime: node
+    # A persistent disk needs a paid instance. On the free plan the SQLite file is
+    # wiped on every restart or deploy (the free plan also sleeps after 15 idle minutes).
+    plan: starter
+    buildCommand: npm ci && npm run build:web
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    disk:
+      name: ground-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: 22.22.0
+      - key: GROUND_DB_PATH
+        value: /var/data/ground.db
+      # Random secret created by Render. Copy it from the Environment tab into the app's Settings.
+      - key: GROUND_API_TOKEN
+        generateValue: true
+      # Paste your key from console.anthropic.com when Render asks for it.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GROUND_MODEL
+        value: claude-opus-5-5

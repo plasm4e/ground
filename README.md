@@ -75,6 +75,21 @@ npm run mobile                                 # scan the QR code with Expo Go
 
 In the app, open **Settings** and enter the server address as your phone sees it (e.g. `http://192.168.1.20:4000`, not `localhost`) and the token. **Save & connect** checks the connection and runs the first sync.
 
+### Deploy on Render (works from a phone)
+
+Render runs the server **and** a web version of the app at one address, so you can use Ground from your phone's browser without a computer or an app store.
+
+1. **Anthropic API key:** sign in at [console.anthropic.com](https://console.anthropic.com), add credits under *Billing* (prepaid), then *API keys → Create key*. Copy it right away, because it's only shown once.
+2. **Render:** *New → Blueprint*, connect GitHub, and pick this repository (Render needs access to it if it's private). Render reads `render.yaml`, asks you for `ANTHROPIC_API_KEY` (paste the key), and generates `GROUND_API_TOKEN` for you.
+3. When the deploy finishes, open the service URL (`https://ground-xxxx.onrender.com`) on your phone.
+4. In Ground, open **Settings**. The server address is already filled in. Paste the `GROUND_API_TOKEN` value from Render's *Environment* tab and tap **Save & connect**.
+5. Optional: use your browser's *Add to Home Screen* to get an app icon.
+
+Notes:
+- The blueprint uses the paid **Starter** plan with a 1 GB disk, because the free plan erases the SQLite database on every restart.
+- In the browser version, photos are read and their details saved, but the photo itself isn't kept (browser storage is too small). The native app keeps photos.
+- Set `GROUND_MODEL=claude-sonnet-5-5` in Render to roughly halve the AI cost per paper.
+
 ### Checks
 
 ```bash
