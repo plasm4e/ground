@@ -1,0 +1,16 @@
+{
+  "name": "ground",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Capture paper documents with your phone, extract the useful bits and keep them organized by what matters to you.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "mobile": "npm run start -w @ground/mobile",
+    "server": "npm run dev -w @ground/server",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  }
+}
