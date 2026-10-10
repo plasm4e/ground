@@ -87,9 +87,24 @@ How the free version works:
 - **Photos are read on the phone** with [tesseract.js](https://github.com/naptha/tesseract.js) (free OCR, served by the site itself; about 7 MB is downloaded the first time). Then the offline parser picks out phones, addresses, hours, dates and people. It works best with flat, well-lit photos, and you always review the result.
 - **Papers are stored in the phone's browser.** Clearing the browser's site data deletes them, so use *Settings → Export everything* now and then. The photo itself isn't kept (browser storage is too small), only what was read from it.
 
-### Upgrade later: sync and AI reading (paid)
+### Better reading with your own Anthropic key (pay per paper, no server)
 
-`render.server.yaml` runs the Ground server, which serves the same web app and adds sync between devices and AI reading with Claude. It costs about $7/month on Render (Starter plan plus a 1 GB disk; the free plan erases the database on restart), plus Anthropic API usage of roughly $0.05–0.10 per paper.
+In the app, open **Settings → AI reading with your Anthropic key** and paste a key from [console.anthropic.com](https://console.anthropic.com/settings/keys) (prepaid credits under *Billing*). Claude then reads your photos straight from the phone: much better than the free reader with messy layouts, handwriting and small print, and it also writes a title, a summary and "good to know" notes. Pick the model there:
+
+| Model | Roughly per paper |
+| --- | --- |
+| Opus 5.5 (default, most accurate) | $0.05–0.10 |
+| Sonnet 5.5 | about half of Opus |
+| Haiku 5.5 | well under a cent |
+
+The key is stored only in that phone's browser and is sent only to Anthropic. Set a monthly spend limit in the Console (*Settings → Limits*). If the key fails (invalid, no credits), Ground falls back to the free reader and tells you why.
+
+### Upgrade later: sync between devices (paid)
+
+The sections below are only needed for syncing papers across devices. AI reading itself works without a server, as described above.
+
+
+`render.server.yaml` runs the Ground server, which serves the same web app and adds sync between devices (and AI reading with a key kept on the server, so it is never stored on phones). It costs about $7/month on Render (Starter plan plus a 1 GB disk; the free plan erases the database on restart), plus Anthropic API usage of roughly $0.05–0.10 per paper.
 
 1. **Anthropic API key:** at [console.anthropic.com](https://console.anthropic.com), add prepaid credits under *Billing*, then *API keys → Create key*.
 2. **Render:** *New → Blueprint*, and set the Blueprint path to `render.server.yaml`. Paste the key when asked for `ANTHROPIC_API_KEY`. `GROUND_API_TOKEN` (a password protecting your server) is generated for you.

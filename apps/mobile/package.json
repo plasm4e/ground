@@ -3,6 +3,7 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0",
     "@expo/ui": "~57.0.22",
     "@ground/core": "*",
     "@react-native-async-storage/async-storage": "2.2.0",

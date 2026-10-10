@@ -1,6 +1,7 @@
 import type { DateOrder } from '@ground/core';
+import { CLAUDE_MODELS } from '@ground/core/claude';
 import { useState } from 'react';
-import { Share, Switch, View } from 'react-native';
+import { Linking, Share, Switch, View } from 'react-native';
 
 import { api, ApiError } from '@/api/client';
 import { ThemedText } from '@/components/themed-text';
@@ -27,6 +28,8 @@ export default function SettingsScreen() {
   const topics = useAppSelector(topicSelectors.selectAll);
   const [serverUrl, setServerUrl] = useState(settings.serverUrl);
   const [apiToken, setApiToken] = useState(settings.apiToken);
+  const [anthropicApiKey, setAnthropicApiKey] = useState(settings.anthropicApiKey);
+  const [keyStatus, setKeyStatus] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -66,6 +69,59 @@ export default function SettingsScreen() {
 
   return (
     <Screen>
+      <SectionTitle>AI reading with your Anthropic key</SectionTitle>
+      <Card>
+        <ThemedText type="small" themeColor="textSecondary">
+          Optional. With your own Anthropic API key, Claude reads your photos much better than the free on-phone reader, and no server is
+          needed. You pay Anthropic per paper. The key is stored only on this phone and is sent only to Anthropic.
+        </ThemedText>
+        <Field
+          label="Anthropic API key"
+          placeholder="sk-ant-…"
+          autoCapitalize="none"
+          autoCorrect={false}
+          secureTextEntry
+          value={anthropicApiKey}
+          onChangeText={setAnthropicApiKey}
+        />
+        <Row>
+          <Button
+            title="Save key"
+            onPress={() => {
+              const key = anthropicApiKey.trim();
+              dispatch(settingsChanged({ anthropicApiKey: key }));
+              setKeyStatus(
+                !key
+                  ? 'Key removed: photos are read with the free on-phone reader.'
+                  : key.startsWith('sk-ant-')
+                    ? 'Saved. The next paper you capture will be read by Claude.'
+                    : 'Saved, but this does not look like an Anthropic key (they start with sk-ant-).',
+              );
+            }}
+            style={{ flex: 1 }}
+          />
+          <Button title="Get a key" variant="secondary" onPress={() => Linking.openURL('https://console.anthropic.com/settings/keys')} style={{ flex: 1 }} />
+        </Row>
+        {keyStatus ? <ThemedText type="small">{keyStatus}</ThemedText> : null}
+        <ThemedText type="small" themeColor="textSecondary">
+          Model
+        </ThemedText>
+        <Row>
+          {CLAUDE_MODELS.map((m) => (
+            <Chip
+              key={m.id}
+              label={`${m.label} · ${m.note}`}
+              selected={settings.claudeModel === m.id}
+              onPress={() => dispatch(settingsChanged({ claudeModel: m.id }))}
+            />
+          ))}
+        </Row>
+        <ThemedText type="small" themeColor="textSecondary">
+          Tip: set a monthly spend limit in the Anthropic Console (Settings → Limits), so a lost phone or a mistake can&apos;t cost more than you
+          planned.
+        </ThemedText>
+      </Card>
+
       <SectionTitle>Server</SectionTitle>
       <Card>
         <ThemedText type="small" themeColor="textSecondary">
@@ -91,7 +147,7 @@ export default function SettingsScreen() {
           <View style={{ flexShrink: 1 }}>
             <ThemedText type="smallBold">Use AI to read photos</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              Sends photos to your server. Turn off to keep everything on the phone.
+              Sends photos to Claude (with your key, or through your server). Turn off to keep everything on the phone.
             </ThemedText>
           </View>
           <Switch value={settings.useAi} onValueChange={(useAi) => {

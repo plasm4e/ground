@@ -1,5 +1,6 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { DateOrder } from '@ground/core';
+import { DEFAULT_CLAUDE_MODEL } from '@ground/core/claude';
 
 export interface SettingsState {
   /** Base URL of the Ground server, e.g. "http://192.168.1.20:4000". Empty = offline only. */
@@ -7,6 +8,12 @@ export interface SettingsState {
   apiToken: string;
   /** Send photos to the server for AI extraction when a server is configured. */
   useAi: boolean;
+  /**
+   * The user's own Anthropic API key, kept only on this device. Lets the app read photos with
+   * Claude directly, without running a Ground server.
+   */
+  anthropicApiKey: string;
+  claudeModel: string;
   dateOrder: DateOrder;
   /** Language for AI-written titles and summaries. */
   locale: string;
@@ -25,6 +32,8 @@ const initialState: SettingsState = {
   serverUrl: sameOriginServer,
   apiToken: '',
   useAi: true,
+  anthropicApiKey: '',
+  claudeModel: DEFAULT_CLAUDE_MODEL,
   dateOrder: 'MDY',
   locale: 'en',
   lastSyncSeq: 0,

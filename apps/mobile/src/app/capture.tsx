@@ -27,8 +27,9 @@ const toPage = (a: ImagePicker.ImagePickerAsset): CapturedPage => ({
 export default function CaptureScreen() {
   const dispatch = useAppDispatch();
   const { pages, text, status, ocrProgress } = useAppSelector((s) => s.capture);
-  const { serverUrl, useAi } = useAppSelector((s) => s.settings);
-  const aiOn = useAi && serverUrl.trim() !== '';
+  const { serverUrl, useAi, anthropicApiKey } = useAppSelector((s) => s.settings);
+  const viaServer = useAi && serverUrl.trim() !== '';
+  const aiOn = viaServer || (useAi && anthropicApiKey.trim() !== '');
 
   const takePhoto = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
@@ -85,11 +86,13 @@ export default function CaptureScreen() {
 
       <Card>
         <ThemedText type="small" themeColor="textSecondary">
-          {aiOn
-            ? 'Photos are sent to your Ground server, where AI reads them and pulls out places, hours, phone numbers, people and dates. You review everything before it is saved.'
-            : ocrAvailable
-              ? 'Free mode: the text in your photos is read on this phone (nothing is uploaded), then Ground picks out phone numbers, addresses, hours and dates. Flat, well-lit photos work best. You review everything before it is saved.'
-              : 'Offline mode: Ground extracts phone numbers, addresses, hours and dates from the text you type. Set up a server in Settings to read photos automatically.'}
+          {aiOn && !viaServer
+            ? 'Photos are sent to Claude with your Anthropic key, which pulls out places, hours, phone numbers, people and dates. You review everything before it is saved.'
+            : aiOn
+              ? 'Photos are sent to your Ground server, where AI reads them and pulls out places, hours, phone numbers, people and dates. You review everything before it is saved.'
+              : ocrAvailable
+                ? 'Free mode: the text in your photos is read on this phone (nothing is uploaded), then Ground picks out phone numbers, addresses, hours and dates. Flat, well-lit photos work best. For much better results, add an Anthropic key in Settings.'
+                : 'Offline mode: Ground extracts phone numbers, addresses, hours and dates from the text you type. Add an Anthropic key in Settings to read photos automatically.'}
         </ThemedText>
       </Card>
 

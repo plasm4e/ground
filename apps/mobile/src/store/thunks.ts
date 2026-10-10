@@ -4,8 +4,9 @@ import { Directory, File, Paths } from 'expo-file-system';
 import { Platform } from 'react-native';
 
 import { api, ApiError } from '@/api/client';
+import { extractWithOwnKey } from '@/lib/claude-direct';
 import { ocrAvailable, recognizeText } from '@/lib/ocr';
-import { captureReset, draftReady, extractionStarted, ocrProgressed } from './capture-slice';
+import { captureReset, draftReady, extractionStarted, ocrProgressed, type CapturedPage } from './capture-slice';
 import { documentDeleted, documentSaved, remoteDocumentsApplied } from './documents-slice';
 import { syncCompleted } from './settings-slice';
 import { topicSelectors, todayIso } from './selectors';
@@ -17,8 +18,9 @@ const createAppThunk = createAsyncThunk.withTypes<{ state: RootState; dispatch: 
 /**
  * Turns the captured photos/text into a draft for review, using the best reader available:
  * 1. AI extraction on the Ground server (when configured),
- * 2. otherwise free on-device text recognition of the photos (web), followed by
- * 3. the rule-based parser, which also handles typed text.
+ * 2. AI extraction straight from the app with the user's own Anthropic key,
+ * 3. otherwise free on-device text recognition of the photos (web), followed by
+ * 4. the rule-based parser, which also handles typed text.
  */
 export const extractCapture = createAppThunk('capture/extract', async (_, { getState, dispatch }) => {
   dispatch(extractionStarted());
@@ -26,20 +28,21 @@ export const extractCapture = createAppThunk('capture/extract', async (_, { getS
   const topics = topicSelectors.selectAll(getState());
   const typed = capture.text.trim();
 
-  const images = capture.pages.filter((p) => p.base64).map((p) => ({ data: p.base64!, mediaType: p.mediaType }));
-  const canUseAi = settings.useAi && settings.serverUrl.trim() !== '' && (images.length > 0 || typed !== '');
+  const images = capture.pages.map(pageImage).filter((i): i is NonNullable<typeof i> => i !== null);
+  const request = {
+    images,
+    text: typed || undefined,
+    topics: topics.map(({ id, name, keywords }) => ({ id, name, keywords })),
+    today: todayIso(),
+    locale: settings.locale,
+  };
+  const hasInput = images.length > 0 || typed !== '';
+  const ownKey = settings.anthropicApiKey.trim();
 
   let aiProblem: string | null = null;
-  if (canUseAi) {
+  if (settings.useAi && hasInput && settings.serverUrl.trim()) {
     try {
-      const draft = await api.extract(settings, {
-        images,
-        text: typed || undefined,
-        topics: topics.map(({ id, name, keywords }) => ({ id, name, keywords })),
-        today: todayIso(),
-        locale: settings.locale,
-      });
-      dispatch(draftReady({ draft, source: 'ai' }));
+      dispatch(draftReady({ draft: await api.extract(settings, request), source: 'ai' }));
       return;
     } catch (e) {
       aiProblem =
@@ -48,6 +51,14 @@ export const extractCapture = createAppThunk('capture/extract', async (_, { getS
           : e instanceof ApiError
             ? e.message
             : 'unexpected error';
+    }
+  }
+  if (settings.useAi && hasInput && ownKey && (!settings.serverUrl.trim() || aiProblem)) {
+    try {
+      dispatch(draftReady({ draft: await extractWithOwnKey(ownKey, settings.claudeModel, request), source: 'ai' }));
+      return;
+    } catch (e) {
+      aiProblem = e instanceof Error ? e.message : 'unexpected error';
     }
   }
 
@@ -81,6 +92,12 @@ export const extractCapture = createAppThunk('capture/extract', async (_, { getS
     }),
   );
 });
+
+/** The photo as base64 for Claude. In the browser the picker may only give a data: URL. */
+function pageImage(p: CapturedPage) {
+  const data = p.base64 ?? (p.uri.startsWith('data:') ? p.uri.slice(p.uri.indexOf(',') + 1) : null);
+  return data ? { data, mediaType: p.mediaType } : null;
+}
 
 /**
  * Copies a photo out of the picker's cache (which the OS may clear) into app storage.

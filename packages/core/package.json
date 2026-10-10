@@ -11,10 +11,15 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "zod": "^4.6.5"
+    "zod": "^4.6.5",
+    "@anthropic-ai/sdk": "^0.133.0"
   },
   "devDependencies": {
     "typescript": "~6.0.3",
     "vitest": "^5.0.3"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./claude": "./src/claude.ts"
   }
 }
